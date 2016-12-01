@@ -155,8 +155,8 @@ BF_INCR_PTR:
 
 BF_DECR_PTR:
   dec TAPE_POINTER
-  cmp TAPE_POINTER, tape
-  jl boundsError
+  ;cmp TAPE_POINTER, tape
+  ;jl boundsError
   jmp mainLoopTailIncrementProgramPos
 
 BF_INCR_CELL:

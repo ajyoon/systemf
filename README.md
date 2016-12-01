@@ -5,7 +5,13 @@
 Building:
 
 ```sh
-nasm -f elf64 -F dwarf systemf.asm -o systemf.o && ld systemf.o -o systemf
+make
 ```
 
-Details and, you know, a working version forthcoming...
+To run, call the binary on a brainfuck file:
+```
+./bin/systemf examples/hello_world.bf
+Hello, World!
+```
+
+Documentation and a functional version forthcoming...
