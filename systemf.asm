@@ -49,10 +49,10 @@ _start:                         ; Entry point
 ;; Parse brackets to build the jump table ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 parseBrackets:
-  %define STACK_POS r10
+  %define STACK_POS r10         ; Position of the stack top
   %define FILE_INDEX r15
   %define CURRENT_CHAR r9
-  mov STACK_POS, 0              ; Initialize stack position
+  mov STACK_POS, -1              ; Initialize stack position
   mov FILE_INDEX, 0             ; Initialize file position
 
 parseLoop:
@@ -62,8 +62,8 @@ parseLoop:
   jne checkRightBracket
 parseLeftBracket:
   ;; Push the character file index onto the index stack
-  mov [index_stack + STACK_POS], FILE_INDEX
   inc STACK_POS
+  mov [index_stack + STACK_POS], FILE_INDEX
   jmp parseLoopTail
 checkRightBracket:
   cmp CURRENT_CHAR, 5Dh
@@ -71,11 +71,12 @@ checkRightBracket:
 parseRightBracket:
   ;; Pop the left bracket from the stacks and place references from each bracket
   ;; to each other in the jump_table for use in program execution
-  movzx r12, byte [index_stack + STACK_POS - 1] ; Store the '[' file index in r12
+  mov r12b, byte [index_stack + STACK_POS] ; Store the '[' file index in r12
+  mov [jump_table + FILE_INDEX], r12b      ; Set jump_table[right_bracket] to left_bracket
   mov r13, FILE_INDEX
-  mov [jump_table + FILE_INDEX], r12 ; Set jump_table[right_bracket] to left_bracket
-  mov [jump_table + r12 + 1], r13    ; Set jump_table[left_bracket] to right_bracket + 1
-  dec STACK_POS                      ; Decrement stack pointer
+  inc r13                      ; Store right bracket file index + 1 in r13
+  mov [jump_table + r12], r13b ; Set jump_table[left_bracket] to right_bracket + 1
+  dec STACK_POS                ; Decrement stack pointer
   jmp parseLoopTail
 checkFileEnd:
   cmp CURRENT_CHAR, 0
