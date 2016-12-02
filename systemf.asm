@@ -217,6 +217,9 @@ BF_SYSTEMCALL:
 ;; If the return value is a pointer,
 ;; it is dereferenced and dumped to tape.
 ;;
+;; TODO: Implement multi-cell arguments in big-endian form
+;; TODO: Implement more than 2 max arguments
+;;
   mov r12, TAPE_POINTER         ; r12 = syscall excursion tape pointer
   movzx r9, byte [r12]            ; r9 = syscall code
   inc r12                       ; Move excursion tape pointer to next cell
@@ -298,5 +301,5 @@ syntaxError:
 
 exitSuccess:
   mov rax, 60
-  mov rdi, [TAPE_POINTER]
+  mov rdi, 0
   syscall
