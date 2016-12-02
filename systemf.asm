@@ -1,25 +1,25 @@
 %define FILE_LENGTH 4096
 %define TAPE_LENGTH 30000
-%define ARG_LENGTH 256
+%define ARG_LENGTH  256
 
 global  _start
 
 section .bss
 ;; Buffer for file being read
-file: resb FILE_LENGTH
+file:        resb FILE_LENGTH
 ;; Byte array for the brainfuck tape
-tape: resb TAPE_LENGTH
+tape:        resb TAPE_LENGTH
 ;; Array for recording jump indexes during parsing
 index_stack: resb FILE_LENGTH
 ;; Array for recording jump indexes for brackets during execution.
-jump_table: resb FILE_LENGTH
+jump_table:  resb FILE_LENGTH
 ;; Arrays for syscall args
-arg_zero: resb ARG_LENGTH
-arg_one: resb ARG_LENGTH
-arg_two: resb ARG_LENGTH
-arg_three: resb ARG_LENGTH
-arg_four: resb ARG_LENGTH
-arg_five: resb ARG_LENGTH
+arg_zero:    resb ARG_LENGTH
+arg_one:     resb ARG_LENGTH
+arg_two:     resb ARG_LENGTH
+arg_three:   resb ARG_LENGTH
+arg_four:    resb ARG_LENGTH
+arg_five:    resb ARG_LENGTH
 
 section  .text                  ; declaring our .text segment
 
@@ -50,9 +50,9 @@ _start:                         ; Entry point
 
 parseBrackets:
   %define STACK_POS r10         ; Position of the stack top
-  %define FILE_INDEX r15
-  %define CURRENT_CHAR r9
-  mov STACK_POS, -1              ; Initialize stack position
+  %define FILE_INDEX r15        ; Position of the interpreter in the program
+  %define CURRENT_CHAR r9       ; The current interpreter character
+  mov STACK_POS, -1             ; Initialize stack position
   mov FILE_INDEX, 0             ; Initialize file position
 
 parseLoop:
@@ -148,28 +148,27 @@ mainLoop:
 
 ;; Instructions
 
-BF_INCR_PTR:
+BF_INCR_PTR:                    ; Increment program pointer
   inc TAPE_POINTER
-  ;cmp TAPE_POINTER, TAPE_LENGTH
+  ;cmp TAPE_POINTER, TAPE_LENGTH  ; TODO: Fix bounds error detection
   ;jge boundsError
   jmp mainLoopTailIncrementProgramPos
 
-BF_DECR_PTR:
+BF_DECR_PTR:                    ; Decrement program pointer
   dec TAPE_POINTER
   ;cmp TAPE_POINTER, tape
   ;jl boundsError
   jmp mainLoopTailIncrementProgramPos
 
-BF_INCR_CELL:
+BF_INCR_CELL:                   ; Increment cell value
   inc byte [TAPE_POINTER]
   jmp mainLoopTailIncrementProgramPos
 
-BF_DECR_CELL:
+BF_DECR_CELL:                   ; Decrement cell value
   dec byte [TAPE_POINTER]
   jmp mainLoopTailIncrementProgramPos
 
-BF_GET_CHAR:
-  ;; Read a character from stdin
+BF_GET_CHAR:                    ; Read cell char from stdin
   mov rsi, TAPE_POINTER
   mov rax, 0
   mov rdi, 0
@@ -177,8 +176,7 @@ BF_GET_CHAR:
   syscall
   jmp mainLoopTailIncrementProgramPos
 
-BF_PUT_CHAR:
-  ;; Print a character to stdout
+BF_PUT_CHAR:                    ; Print cell char to stdout
   mov rsi, TAPE_POINTER
   mov rax, 1
   mov rdi, 0
@@ -186,14 +184,14 @@ BF_PUT_CHAR:
   syscall
   jmp mainLoopTailIncrementProgramPos
 
-BF_LOOPSTART:
+BF_LOOPSTART:                   ; Bracket open, start of loop
   cmp byte [TAPE_POINTER], 0
   jne mainLoopTailIncrementProgramPos
   movzx r9, byte [jump_table + BF_PROGRAM_POS] ; Set r9 to jump-to location
   mov BF_PROGRAM_POS, r9
   jmp mainLoopTailNoChangeProgramPos
 
-BF_LOOPEND:
+BF_LOOPEND:                     ; Bracket close, end of loop
   cmp byte [TAPE_POINTER], 0
   je mainLoopTailIncrementProgramPos
   movzx r9, byte [jump_table + BF_PROGRAM_POS] ; Set r9 to jump-to location
