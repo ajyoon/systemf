@@ -4,6 +4,12 @@
 
 global  _start
 
+section .data
+boundsErrorMsg:            db "Tape position out of bounds", 10
+boundsErrorMsgLen:         equ $ - boundsErrorMsg
+bracketsSyntaxErrorMsg:    db "Syntax Error: Mismatched brackets", 10
+bracketsSyntaxErrorMsgLen: equ $ - bracketsSyntaxErrorMsg
+
 section .bss
 ;; Buffer for file being read
 file:        resb FILE_LENGTH
@@ -56,7 +62,6 @@ parseBrackets:
   mov FILE_INDEX, 0             ; Initialize file position
 
 parseLoop:
-  ;; TODO: Guard against syntax errors more completely
   movzx CURRENT_CHAR, byte [file + FILE_INDEX] ; Read character
   cmp CURRENT_CHAR, 5Bh                        ; Test if == '['
   jne checkRightBracket
@@ -69,8 +74,12 @@ checkRightBracket:
   cmp CURRENT_CHAR, 5Dh
   jne checkFileEnd
 parseRightBracket:
+  ;; If the stack position <= -1, the brackets are mismatched
+  cmp STACK_POS, -1
+  jle mismatchBracketsError
   ;; Pop the left bracket from the stacks and place references from each bracket
   ;; to each other in the jump_table for use in program execution
+
   mov r12b, byte [index_stack + STACK_POS] ; Store the '[' file index in r12
   mov [jump_table + FILE_INDEX], r12b      ; Set jump_table[right_bracket] to left_bracket
   mov r13, FILE_INDEX
@@ -81,11 +90,14 @@ parseRightBracket:
 checkFileEnd:
   cmp CURRENT_CHAR, 0
   je parseLoopTerminate
-  ;; Maybe also check for buffer overshoot?
 parseLoopTail:
   inc FILE_INDEX
   jmp parseLoop
 parseLoopTerminate:
+  ;; If the stack position != -1, the brackets are mismatched
+  cmp STACK_POS, -1
+  jne mismatchBracketsError
+  ;; Otherwise all is well. Begin program execution.
   jmp mainLoopStart
 
 
@@ -106,7 +118,6 @@ mainLoopStart:
 
 mainLoop:
 
-  ;; TODO: Implement tape wrapping? Would make loop parsing more complicated...
   cmp BF_PROGRAM_POS, FILE_LENGTH ; if BF_PROGRAM_POS > file length, exit.
   jg exitSuccess
 
@@ -288,13 +299,32 @@ mainLoopTailNoChangeProgramPos:
 
 ;; Exit conditions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+  mov rsi, TAPE_POINTER
+  mov rax, 1
+  mov rdi, 0
+  mov rdx, 1
+
 
 boundsError:
+  ;; Print error message
+  mov rax, 1
+  mov rdi, 0
+  mov rsi, boundsErrorMsg
+  mov rdx, boundsErrorMsgLen
+  syscall
+  ;; Exit
   mov rax, 60
   mov rdi, 2
   syscall
 
-syntaxError:
+mismatchBracketsError:
+  ;; Print error message
+  mov rax, 1
+  mov rdi, 0
+  mov rsi, bracketsSyntaxErrorMsg
+  mov rdx, bracketsSyntaxErrorMsgLen
+  syscall
+  ;; Exit
   mov rax, 60
   mov rdi, 1
   syscall
