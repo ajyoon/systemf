@@ -1,4 +1,4 @@
-%define FILE_LENGTH 4096
+%define FILE_LENGTH 131072
 %define TAPE_LENGTH 30000
 %define ARG_LENGTH  256
 
@@ -150,14 +150,16 @@ mainLoop:
 
 BF_INCR_PTR:                    ; Increment program pointer
   inc TAPE_POINTER
-  ;cmp TAPE_POINTER, TAPE_LENGTH  ; TODO: Fix bounds error detection
-  ;jge boundsError
+  mov r12, tape
+  add r12, TAPE_LENGTH
+  cmp TAPE_POINTER, r12         ; Check if TAPE_POINTER is behind tape start
+  jg boundsError
   jmp mainLoopTailIncrementProgramPos
 
 BF_DECR_PTR:                    ; Decrement program pointer
   dec TAPE_POINTER
-  ;cmp TAPE_POINTER, tape
-  ;jl boundsError
+  cmp TAPE_POINTER, tape
+  jl boundsError
   jmp mainLoopTailIncrementProgramPos
 
 BF_INCR_CELL:                   ; Increment cell value
@@ -249,9 +251,9 @@ systemCallGetArgOneChar:           ; Read r12 tape cells into arg_zero
   cmp r10, 0
   je systemCallGetArgCharTail   ; If there are no more cells to read, this arg is fully read.
   inc r12                       ; Increment excursion tape pointer to next argument cell
-  mov al, byte [r12]                    ; use r8 as temporary holding place for current cell value
+  mov al, byte [r12]            ; use r8 as temporary holding place for current cell value
   mov byte [arg_one + rcx], al ; Copy current cell to arg_zero buffer
-                                        ; position in arg_zero buffer
+                                ; position in arg_zero buffer
   inc rcx                       ; arg_zero byte buffer offset
   dec r10
   jmp systemCallGetArgOneChar
