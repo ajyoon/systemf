@@ -467,3 +467,7 @@ exitSuccess:
   mov rax, 60
   mov rdi, 0
   syscall
+
+
+;; Includes ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+%include "src/combine_bytes.asm"
