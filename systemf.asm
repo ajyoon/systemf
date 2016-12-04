@@ -19,13 +19,19 @@ tape:        resb TAPE_LENGTH
 index_stack: resb FILE_LENGTH
 ;; Array for recording jump indexes for brackets during execution.
 jump_table:  resb FILE_LENGTH
-;; Arrays for syscall args
-arg_zero:    resb ARG_LENGTH
-arg_one:     resb ARG_LENGTH
-arg_two:     resb ARG_LENGTH
-arg_three:   resb ARG_LENGTH
-arg_four:    resb ARG_LENGTH
-arg_five:    resb ARG_LENGTH
+;; Arrays and mode flags for syscall args
+arg_zero:       resb ARG_LENGTH
+arg_zero_mode:  resb 1
+arg_one:        resb ARG_LENGTH
+arg_one_mode:   resb 1
+arg_two:        resb ARG_LENGTH
+arg_two_mode:   resb 1
+arg_three:      resb ARG_LENGTH
+arg_three_mode: resb 1
+arg_four:       resb ARG_LENGTH
+arg_four_mode:  resb 1
+arg_five:       resb ARG_LENGTH
+arg_five_mode:  resb 1
 
 section  .text                  ; declaring our .text segment
 
@@ -233,109 +239,185 @@ BF_SYSTEMCALL:
   inc r12                       ; Move excursion tape pointer to next cell
   movzx r11, byte [r12]           ; r11 = number of args
   mov rbx, 0                      ; rbx = current arg number
-systemCallGetArg:
+sysCallGetArg:
   cmp r11, 0
-  jle systemCallExecute         ; End loop once args are exhausted
-  inc r12                       ; Increment excursion tape pointer
-  movzx r10, byte [r12]         ; Get the argument length
+  jle sysCallExecute         ; End loop once args are exhausted
   mov rcx, 0                    ; Set rcx = 0 to track buffer copy offset
   cmp rbx, 0                    ; Branch to current argument ...
-  je systemCallGetArgZeroChar
+  je sysCallGetArgZero
   cmp rbx, 1
-  je systemCallGetArgOneChar
+  je sysCallGetArgOne
   cmp rbx, 2
-  je systemCallGetArgTwoChar
+  je sysCallGetArgTwo
   cmp rbx, 3
-  je systemCallGetArgThreeChar
+  je sysCallGetArgThree
   cmp rbx, 4
-  je systemCallGetArgFourChar
+  je sysCallGetArgFour
   cmp rbx, 5
-  je systemCallGetArgFiveChar
+  je sysCallGetArgFive
 
-systemCallGetArgZeroChar:        ; Read r12 tape cells into arg_zero
+sysCallGetArgZero:
+  inc r12                        ; Increment excursion tape pointer to arg type cell
+  mov r8b, byte [r12]
+  mov byte [arg_zero_mode], r8b  ; Get arg type
+  inc r12                       ; Increment excursion tape pointer
+  movzx r10, byte [r12]         ; Get the argument length
+sysCallGetArgZeroChar:           ; Read r12 tape cells into arg_zero
   cmp r10, 0
-  je systemCallGetArgCharTail   ; If there are no more cells to read, this arg is fully read.
+  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
   inc r12                       ; Increment excursion tape pointer to next argument cell
-  mov al, byte [r12]                    ; use r8 as temporary holding place for current cell value
+  mov al, byte [r12]            ; use r8 as temporary holding place for current cell value
   mov byte [arg_zero + rcx], al ; Copy current cell to arg_zero buffer
-                                        ; position in arg_zero buffer
+                                ; position in arg_zero buffer
   inc rcx                       ; arg_zero byte buffer offset
   dec r10
-  jmp systemCallGetArgZeroChar
+  jmp sysCallGetArgZeroChar
 
-systemCallGetArgOneChar:        ; Read r12 tape cells into arg_one
+sysCallGetArgOne:
+  inc r12                        ; Increment excursion tape pointer to arg type cell
+  mov r8b, byte [r12]
+  mov byte [arg_one_mode], r8b  ; Get arg type
+  inc r12                       ; Increment excursion tape pointer
+  movzx r10, byte [r12]         ; Get the argument length
+sysCallGetArgOneChar:            ; Read r12 tape cells into arg_one
   cmp r10, 0
-  je systemCallGetArgCharTail   ; If there are no more cells to read, this arg is fully read.
+  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
   inc r12                       ; Increment excursion tape pointer to next argument cell
   mov al, byte [r12]            ; use r8 as temporary holding place for current cell value
   mov byte [arg_one + rcx], al  ; Copy current cell to arg_zero buffer
                                 ; position in arg_one buffer
   inc rcx                       ; arg_one byte buffer offset
   dec r10
-  jmp systemCallGetArgOneChar
+  jmp sysCallGetArgOneChar
 
-systemCallGetArgTwoChar:        ; Read r12 tape cells into arg_two
+sysCallGetArgTwo:
+  inc r12                        ; Increment excursion tape pointer to arg type cell
+  mov r8b, byte [r12]
+  mov byte [arg_two_mode], r8b  ; Get arg type
+  inc r12                       ; Increment excursion tape pointer
+  movzx r10, byte [r12]         ; Get the argument length
+sysCallGetArgTwoChar:            ; Read r12 tape cells into arg_two
   cmp r10, 0
-  je systemCallGetArgCharTail   ; If there are no more cells to read, this arg is fully read.
+  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
   inc r12                       ; Increment excursion tape pointer to next argument cell
   mov al, byte [r12]            ; use r8 as temporary holding place for current cell value
   mov byte [arg_two + rcx], al  ; Copy current cell to arg_two buffer
   ; position in arg_zero buffer
   inc rcx                       ; arg_two byte buffer offset
   dec r10
-  jmp systemCallGetArgTwoChar
+  jmp sysCallGetArgTwoChar
 
-systemCallGetArgThreeChar:        ; Read r12 tape cells into arg_three
+sysCallGetArgThree:
+  inc r12                        ; Increment excursion tape pointer to arg type cell
+  mov r8b, byte [r12]
+  mov byte [arg_three_mode], r8b  ; Get arg type
+  inc r12                       ; Increment excursion tape pointer
+  movzx r10, byte [r12]         ; Get the argument length
+sysCallGetArgThreeChar:          ; Read r12 tape cells into arg_three
   cmp r10, 0
-  je systemCallGetArgCharTail     ; If there are no more cells to read, this arg is fully read.
+  je sysCallGetArgCharTail        ; If there are no more cells to read, this arg is fully read.
   inc r12                         ; Increment excursion tape pointer to next argument cell
   mov al, byte [r12]              ; use r8 as temporary holding place for current cell value
   mov byte [arg_three + rcx], al  ; Copy current cell to arg_three buffer
   ; position in arg_zero buffer
   inc rcx                         ; arg_three byte buffer offset
   dec r10
-  jmp systemCallGetArgThreeChar
+  jmp sysCallGetArgThreeChar
 
-systemCallGetArgFourChar:       ; Read r12 tape cells into arg_four
+sysCallGetArgFour:
+  inc r12                        ; Increment excursion tape pointer to arg type cell
+  mov r8b, byte [r12]
+  mov byte [arg_four_mode], r8b  ; Get arg type
+  inc r12                       ; Increment excursion tape pointer
+  movzx r10, byte [r12]         ; Get the argument length
+sysCallGetArgFourChar:           ; Read r12 tape cells into arg_four
   cmp r10, 0
-  je systemCallGetArgCharTail   ; If there are no more cells to read, this arg is fully read.
+  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
   inc r12                       ; Increment excursion tape pointer to next argument cell
   mov al, byte [r12]            ; use r8 as temporary holding place for current cell value
   mov byte [arg_four + rcx], al ; Copy current cell to arg_four buffer
   ; position in arg_zero buffer
   inc rcx                       ; arg_four buffer offset
   dec r10
-  jmp systemCallGetArgFourChar
+  jmp sysCallGetArgFourChar
 
-systemCallGetArgFiveChar:       ; Read r12 tape cells into arg_five
+sysCallGetArgFive:
+  inc r12                        ; Increment excursion tape pointer to arg type cell
+  mov r8b, byte [r12]
+  mov byte [arg_five_mode], r8b  ; Get arg type
+  inc r12                       ; Increment excursion tape pointer
+  movzx r10, byte [r12]         ; Get the argument length
+sysCallGetArgFiveChar:           ; Read r12 tape cells into arg_five
   cmp r10, 0
-  je systemCallGetArgCharTail   ; If there are no more cells to read, this arg is fully read.
+  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
   inc r12                       ; Increment excursion tape pointer to next argument cell
   mov al, byte [r12]            ; use r8 as temporary holding place for current cell value
   mov byte [arg_five + rcx], al ; Copy current cell to arg_five buffer
   ; position in arg_zero buffer
   inc rcx                       ; arg_five byte buffer offset
   dec r10
-  jmp systemCallGetArgFiveChar
+  jmp sysCallGetArgFiveChar
 
-systemCallGetArgCharTail:
+sysCallGetArgCharTail:
   dec r11                       ; Decrement remaining arguments
   inc rbx                       ; Increment current argument number
-  jmp systemCallGetArg
+  jmp sysCallGetArg
 
-systemCallExecute:
+sysCallExecute:
   mov rax, r9                   ; Get syscall code back
-  ;; TODO: Support pointer arguments specified by program
-  ;; Currently, in order to make one of these arguments work
-  ;; as a byte buffer instead of single byte literal,
-  ;; the brackets need to be removed. User doesn't have a way
-  ;; to pass buffer/pointer arguments.
+
+get_arg_zero:
+  cmp byte [arg_zero_mode], 1
+  je get_arg_zero_as_ptr
+get_arg_zero_as_val:
   mov rdi, [arg_zero]           ; Put arg_zero in rdi
+  jmp get_arg_one
+get_arg_zero_as_ptr:
+  mov rdi, arg_zero
+
+get_arg_one:
+  cmp byte [arg_one_mode], 1
+  je get_arg_one_as_ptr
+get_arg_one_as_val:
   mov rsi, [arg_one]            ; Put arg_one in rsi
+  jmp get_arg_two
+get_arg_one_as_ptr:
+  mov rsi, arg_one
+
+get_arg_two:
+  cmp byte [arg_two_mode], 1
+  je get_arg_two_as_ptr
+get_arg_two_as_val:
   mov rdx, [arg_two]            ; Put arg_two in rdx
+  jmp get_arg_three
+get_arg_two_as_ptr:
+  mov rdx, arg_two
+
+get_arg_three:
+  cmp byte [arg_three_mode], 1
+  je get_arg_three_as_ptr
+get_arg_three_as_val:
   mov rcx, [arg_three]          ; Put arg_three in rcx
+  jmp get_arg_four
+get_arg_three_as_ptr:
+  mov rcx, arg_three
+
+get_arg_four:
+  cmp byte [arg_four_mode], 1
+  je get_arg_four_as_ptr
+get_arg_four_as_val:
   mov r8,  [arg_four]           ; Put arg_four in r8
+  jmp get_arg_five
+get_arg_four_as_ptr:
+  mov r8,  arg_four
+
+get_arg_five:
+  cmp byte [arg_five_mode], 1
+  je get_arg_five_as_ptr
+get_arg_five_as_val:
   mov r9,  [arg_five]           ; Put arg_five in r9
+get_arg_five_as_ptr:
+  mov r9,  arg_five
   syscall
   ;; Syscall return value is now in rax
   ;; Dump it into the tape from TAPE_POINTER forward

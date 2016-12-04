@@ -32,6 +32,8 @@ additional language character: `%`. When this character is encountered in
 a program, the interpreter does the following:
 
 1. The value at the current cell is considered the syscall code
+2. The following cell is a flag for what type of argument,
+   where 0 indicates a regular argument and 1 indicates a pointer
 2. The following cell is considered the number of arguments
 3. The following cells outline arguments in the following form:
    1. One cell indicates the cell length of the argument
@@ -48,21 +50,22 @@ For example, to call sys-exit, we can give the following code:
 +                       Write argument count of 1 to cell2
 
 >                       move to cell3
-+                       Write first arg cell length of 1 to cell3
+(leave 0)               Write first arg type as normal (non-pointer)
 
 >                       move to cell4
++                       Write first arg cell length of 1 to cell3
+
+>                       move to cell5
 +++                     Write exit code 3 in cell4
 
-<<<                     move back to cell1
+<<<<                    move back to cell1
 %                       Call kernel
 ```
 
 This will trigger a program exit with exit code 3:
 
 ```sh
-$ ./bin/systemf examples/syscall.bf
+$ ./bin/systemf examples/syscall_simple.bf
 $ echo $?
 3
 ```
-
-Currently a maximum of 2 arguments is supported, but more will be supported soon.
