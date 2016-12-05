@@ -63,13 +63,11 @@ _start:                         ; Entry point
 parseBrackets:
   %define STACK_POS r10         ; Position of the stack top
   %define FILE_INDEX r15        ; Position of the interpreter in the program
-  %define CURRENT_CHAR r9       ; The current interpreter character
   mov STACK_POS, -1             ; Initialize stack position
   mov FILE_INDEX, 0             ; Initialize file position
 
 parseLoop:
-  movzx CURRENT_CHAR, byte [file + FILE_INDEX] ; Read character
-  cmp CURRENT_CHAR, 5Bh                        ; Test if == '['
+  cmp byte [file + FILE_INDEX], 5Bh  ; Test if == '['
   jne checkRightBracket
 parseLeftBracket:
   ;; Push the character file index onto the index stack
@@ -77,7 +75,7 @@ parseLeftBracket:
   mov [index_stack + STACK_POS], FILE_INDEX
   jmp parseLoopTail
 checkRightBracket:
-  cmp CURRENT_CHAR, 5Dh
+  cmp byte [file + FILE_INDEX], 5Dh
   jne checkFileEnd
 parseRightBracket:
   ;; If the stack position <= -1, the brackets are mismatched
@@ -94,7 +92,7 @@ parseRightBracket:
   dec STACK_POS                ; Decrement stack pointer
   jmp parseLoopTail
 checkFileEnd:
-  cmp CURRENT_CHAR, 0
+  cmp byte [file + FILE_INDEX], 0
   je parseLoopTerminate
 parseLoopTail:
   inc FILE_INDEX
@@ -110,54 +108,52 @@ parseLoopTerminate:
 ;; Main loop for script interpretation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-%define BF_PROGRAM_POS r15 ; Current position index of the program interpreter (0...n)
+%define PROGRAM_POS r15 ; Current position index of the program interpreter (0...n)
   ; in the read program file
-%define CURRENT_SYM r14         ; Symbol at the current program position
 %define TAPE_POINTER r13        ; Pointer in the brainfuck array
 
 mainLoopStart:
 ;; Set up main loop
 
-  mov BF_PROGRAM_POS, 0         ; Initialize the interpreter position
+  mov PROGRAM_POS, 0         ; Initialize the interpreter position
   mov TAPE_POINTER, tape        ; Initialize the tape pointer to pos 0
 
 
 mainLoop:
 
-  cmp BF_PROGRAM_POS, FILE_LENGTH ; if BF_PROGRAM_POS > file length, exit.
+  cmp PROGRAM_POS, FILE_LENGTH ; if PROGRAM_POS > file length, exit.
   jg exitSuccess
 
-  ;; Read symbol at BF_PROGRAM_POS
-  movzx CURRENT_SYM, byte [file + BF_PROGRAM_POS]
+  ;; Read symbol at PROGRAM_POS
 
-  cmp CURRENT_SYM, 0h           ; NULL   End of read file, exit.
+  cmp byte [file + PROGRAM_POS], 0h   ; NULL   End of read file, exit.
   je exitSuccess
 
-  cmp CURRENT_SYM, 3Eh          ; >      Increment pointer
+  cmp byte [file + PROGRAM_POS], 3Eh  ; >      Increment pointer
   je BF_INCR_PTR
 
-  cmp CURRENT_SYM, 3Ch          ; <      Decrement pointer
+  cmp byte [file + PROGRAM_POS], 3Ch  ; <      Decrement pointer
   je BF_DECR_PTR
 
-  cmp CURRENT_SYM, 2Bh          ; +      Increment cell
+  cmp byte [file + PROGRAM_POS], 2Bh  ; +      Increment cell
   je BF_INCR_CELL
 
-  cmp CURRENT_SYM, 2Dh          ; -      Decrement cell
+  cmp byte [file + PROGRAM_POS], 2Dh  ; -      Decrement cell
   je BF_DECR_CELL
 
-  cmp CURRENT_SYM, 2Ch          ; ,      Get character
+  cmp byte [file + PROGRAM_POS], 2Ch  ; ,      Get character
   je BF_GET_CHAR
 
-  cmp CURRENT_SYM, 2Eh          ; .      Put character
+  cmp byte [file + PROGRAM_POS], 2Eh  ; .      Put character
   je BF_PUT_CHAR
 
-  cmp CURRENT_SYM, 5Bh          ; [      Start loop
+  cmp byte [file + PROGRAM_POS], 5Bh  ; [      Start loop
   je BF_LOOPSTART
 
-  cmp CURRENT_SYM, 5Dh          ; ]      End loop
+  cmp byte [file + PROGRAM_POS], 5Dh  ; ]      End loop
   je BF_LOOPEND
 
-  cmp CURRENT_SYM, 25h          ; %      Syscall
+  cmp byte [file + PROGRAM_POS], 25h  ; %      Syscall
   je BF_SYSTEMCALL
 
   ;; Otherwise, ignore this character (whitespace / comment)
@@ -206,15 +202,15 @@ BF_PUT_CHAR:                    ; Print cell char to stdout
 BF_LOOPSTART:                   ; Bracket open, start of loop
   cmp byte [TAPE_POINTER], 0
   jne mainLoopTailIncrementProgramPos
-  movzx r9, byte [jump_table + BF_PROGRAM_POS] ; Set r9 to jump-to location
-  mov BF_PROGRAM_POS, r9
+  movzx r9, byte [jump_table + PROGRAM_POS] ; Set r9 to jump-to location
+  mov PROGRAM_POS, r9
   jmp mainLoopTailNoChangeProgramPos
 
 BF_LOOPEND:                     ; Bracket close, end of loop
   cmp byte [TAPE_POINTER], 0
   je mainLoopTailIncrementProgramPos
-  movzx r9, byte [jump_table + BF_PROGRAM_POS] ; Set r9 to jump-to location
-  mov BF_PROGRAM_POS, r9
+  movzx r9, byte [jump_table + PROGRAM_POS] ; Set r9 to jump-to location
+  mov PROGRAM_POS, r9
   jmp mainLoopTailNoChangeProgramPos
 
 BF_SYSTEMCALL:
@@ -239,8 +235,6 @@ BF_SYSTEMCALL:
   movzx r11, byte [r12]         ; r11 = number of args
   mov rbx, 0                    ; rbx = current arg number
 sysCallGetArg:
-  ;; TODO: There is a lot of repeated code here that could probably
-  ;;       be simplified greatly with some macros
   cmp r11, 0
   jle sysCallExecute         ; End loop once args are exhausted
   mov rcx, 0                 ; Set rcx = 0 to track buffer copy offset
@@ -257,107 +251,38 @@ sysCallGetArg:
   cmp rbx, 5
   je sysCallGetArgFive
 
+%macro read_arg 2
+  ;; Read an argument from the tape into buffers
+  ;; Arg 1: Address of argument mode target byte
+  ;; Arg 2: Address of argument byte buffer
+  inc r12                       ; Increment excursion tape pointer to arg type cell
+  mov r8b, byte [r12]
+  mov byte [%1], r8b            ; Get arg type
+  inc r12                       ; Increment excursion tape pointer
+  movzx r10, byte [r12]         ; Get the argument length
+.read_arg_body:                 ; Read r12 tape cells into argument byte buffer
+  cmp r10, 0
+  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
+  inc r12                       ; Increment excursion tape pointer to next argument cell
+  mov al, byte [r12]            ; use al as temporary holding place for current cell value
+  mov byte [%2 + rcx], al       ; Copy current cell to %2 buffer position in argument buffer
+  inc rcx                       ; Argument byte buffer offset
+  dec r10
+  jmp .read_arg_body
+%endmacro
+
 sysCallGetArgZero:
-  inc r12                        ; Increment excursion tape pointer to arg type cell
-  mov r8b, byte [r12]
-  mov byte [arg_zero_mode], r8b  ; Get arg type
-  inc r12                        ; Increment excursion tape pointer
-  movzx r10, byte [r12]          ; Get the argument length
-sysCallGetArgZeroChar:           ; Read r12 tape cells into arg_zero
-  cmp r10, 0
-  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
-  inc r12                       ; Increment excursion tape pointer to next argument cell
-  mov al, byte [r12]            ; use al as temporary holding place for current cell value
-  mov byte [arg_zero + rcx], al ; Copy current cell to arg_zero buffer
-                                ; position in arg_zero buffer
-  inc rcx                       ; arg_zero byte buffer offset
-  dec r10
-  jmp sysCallGetArgZeroChar
-
+  read_arg arg_zero_mode, arg_zero
 sysCallGetArgOne:
-  inc r12                       ; Increment excursion tape pointer to arg type cell
-  mov r8b, byte [r12]
-  mov byte [arg_one_mode], r8b  ; Get arg type
-  inc r12                       ; Increment excursion tape pointer
-  movzx r10, byte [r12]         ; Get the argument length
-sysCallGetArgOneChar:           ; Read r12 tape cells into arg_one
-  cmp r10, 0
-  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
-  inc r12                       ; Increment excursion tape pointer to next argument cell
-  mov al, byte [r12]            ; use al as temporary holding place for current cell value
-  mov byte [arg_one + rcx], al  ; Copy current cell to arg_zero buffer
-                                ; position in arg_one buffer
-  inc rcx                       ; arg_one byte buffer offset
-  dec r10
-  jmp sysCallGetArgOneChar
-
+  read_arg arg_one_mode, arg_one
 sysCallGetArgTwo:
-  inc r12                       ; Increment excursion tape pointer to arg type cell
-  mov r8b, byte [r12]
-  mov byte [arg_two_mode], r8b  ; Get arg type
-  inc r12                       ; Increment excursion tape pointer
-  movzx r10, byte [r12]         ; Get the argument length
-sysCallGetArgTwoChar:           ; Read r12 tape cells into arg_two
-  cmp r10, 0
-  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
-  inc r12                       ; Increment excursion tape pointer to next argument cell
-  mov al, byte [r12]            ; use al as temporary holding place for current cell value
-  mov byte [arg_two + rcx], al  ; Copy current cell to arg_two buffer
-  ; position in arg_zero buffer
-  inc rcx                       ; arg_two byte buffer offset
-  dec r10
-  jmp sysCallGetArgTwoChar
-
+  read_arg arg_two_mode, arg_two
 sysCallGetArgThree:
-  inc r12                        ; Increment excursion tape pointer to arg type cell
-  mov r8b, byte [r12]
-  mov byte [arg_three_mode], r8b ; Get arg type
-  inc r12                        ; Increment excursion tape pointer
-  movzx r10, byte [r12]          ; Get the argument length
-sysCallGetArgThreeChar:          ; Read r12 tape cells into arg_three
-  cmp r10, 0
-  je sysCallGetArgCharTail        ; If there are no more cells to read, this arg is fully read.
-  inc r12                         ; Increment excursion tape pointer to next argument cell
-  mov al, byte [r12]              ; use al as temporary holding place for current cell value
-  mov byte [arg_three + rcx], al  ; Copy current cell to arg_three buffer
-  ; position in arg_zero buffer
-  inc rcx                         ; arg_three byte buffer offset
-  dec r10
-  jmp sysCallGetArgThreeChar
-
+  read_arg arg_three_mode, arg_three
 sysCallGetArgFour:
-  inc r12                        ; Increment excursion tape pointer to arg type cell
-  mov r8b, byte [r12]
-  mov byte [arg_four_mode], r8b  ; Get arg type
-  inc r12                        ; Increment excursion tape pointer
-  movzx r10, byte [r12]          ; Get the argument length
-sysCallGetArgFourChar:           ; Read r12 tape cells into arg_four
-  cmp r10, 0
-  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
-  inc r12                       ; Increment excursion tape pointer to next argument cell
-  mov al, byte [r12]            ; use al as temporary holding place for current cell value
-  mov byte [arg_four + rcx], al ; Copy current cell to arg_four buffer
-  ; position in arg_zero buffer
-  inc rcx                       ; arg_four buffer offset
-  dec r10
-  jmp sysCallGetArgFourChar
-
+  read_arg arg_four_mode, arg_four
 sysCallGetArgFive:
-  inc r12                        ; Increment excursion tape pointer to arg type cell
-  mov r8b, byte [r12]
-  mov byte [arg_five_mode], r8b  ; Get arg type
-  inc r12                        ; Increment excursion tape pointer
-  movzx r10, byte [r12]          ; Get the argument length
-sysCallGetArgFiveChar:           ; Read r12 tape cells into arg_five
-  cmp r10, 0
-  je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
-  inc r12                       ; Increment excursion tape pointer to next argument cell
-  mov al, byte [r12]            ; use al as temporary holding place for current cell value
-  mov byte [arg_five + rcx], al ; Copy current cell to arg_five buffer
-  ; position in arg_zero buffer
-  inc rcx                       ; arg_five byte buffer offset
-  dec r10
-  jmp sysCallGetArgFiveChar
+  read_arg arg_five_mode, arg_five
 
 sysCallGetArgCharTail:
   dec r11                       ; Decrement remaining arguments
@@ -367,58 +292,30 @@ sysCallGetArgCharTail:
 sysCallExecute:
   mov rax, r9                   ; Get syscall code back
 
-get_arg_zero:
-  cmp byte [arg_zero_mode], 1
-  je get_arg_zero_as_ptr
-get_arg_zero_as_val:
-  mov rdi, [arg_zero]           ; Put arg_zero in rdi
-  jmp get_arg_one
-get_arg_zero_as_ptr:
-  mov rdi, arg_zero
+%macro prepare_arg 3
+;; Macro to load an argument from a buffer into the a register.
+;; Arg 1: Address of the byte flag indicating the argument type
+;; Arg 2: The Address of the argument data
+;; Arg 3: Target register
+prepare_%2:
+  cmp byte [%1], 1              ; Check argument type flag
+  je prepare_%2_as_ptr
+prepare_%2_as_val:                  ; Treat argument as a value
+  mov %3, [%2]
+  jmp continue_%2
+prepare_%2_as_ptr:                  ; Treat argument as a pointer
+  mov %3, %2
+continue_%2:                    ; Continue...
+  ;; (Do nothing)
+%endmacro
 
-get_arg_one:
-  cmp byte [arg_one_mode], 1
-  je get_arg_one_as_ptr
-get_arg_one_as_val:
-  mov rsi, [arg_one]            ; Put arg_one in rsi
-  jmp get_arg_two
-get_arg_one_as_ptr:
-  mov rsi, arg_one
+  prepare_arg arg_zero_mode,  arg_zero,  rdi
+  prepare_arg arg_one_mode,   arg_one,   rsi
+  prepare_arg arg_two_mode,   arg_two,   rdx
+  prepare_arg arg_three_mode, arg_three, rcx
+  prepare_arg arg_four_mode,  arg_four,  r8
+  prepare_arg arg_five_mode,  arg_five,  r9
 
-get_arg_two:
-  cmp byte [arg_two_mode], 1
-  je get_arg_two_as_ptr
-get_arg_two_as_val:
-  mov rdx, [arg_two]            ; Put arg_two in rdx
-  jmp get_arg_three
-get_arg_two_as_ptr:
-  mov rdx, arg_two
-
-get_arg_three:
-  cmp byte [arg_three_mode], 1
-  je get_arg_three_as_ptr
-get_arg_three_as_val:
-  mov rcx, [arg_three]          ; Put arg_three in rcx
-  jmp get_arg_four
-get_arg_three_as_ptr:
-  mov rcx, arg_three
-
-get_arg_four:
-  cmp byte [arg_four_mode], 1
-  je get_arg_four_as_ptr
-get_arg_four_as_val:
-  mov r8,  [arg_four]           ; Put arg_four in r8
-  jmp get_arg_five
-get_arg_four_as_ptr:
-  mov r8,  arg_four
-
-get_arg_five:
-  cmp byte [arg_five_mode], 1
-  je get_arg_five_as_ptr
-get_arg_five_as_val:
-  mov r9,  [arg_five]           ; Put arg_five in r9
-get_arg_five_as_ptr:
-  mov r9,  arg_five
   syscall
   ;; Syscall return value is now in rax
   ;; Dump it into the tape from TAPE_POINTER forward
@@ -429,7 +326,7 @@ get_arg_five_as_ptr:
 ;; Continue the main loop by incrementing the program pointer position
 ;; and looping back
 mainLoopTailIncrementProgramPos:
-  inc BF_PROGRAM_POS
+  inc PROGRAM_POS
   jmp mainLoop
 
 ;; Continue the main loop by looping back without changing the
