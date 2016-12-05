@@ -1,6 +1,6 @@
-# SystemF
+# systemf
 
-## a brainfuck interpreter with the ability to make Linux syscalls
+## a brainfuck interpreter supporting Linux syscalls
 
 Building:
 
@@ -35,12 +35,13 @@ a program, the interpreter does the following:
 2. The following cell is a flag for what type of argument,
    where 0 indicates a regular argument, 1 indicates a buffer,
    and 2 indicates a cell number pointer.
-2. The following cell is considered the number of arguments
-3. The following cells outline arguments in the following form:
+3. The following cell is considered the number of arguments
+4. The following cells outline arguments in the following form:
    1. One cell indicates the cell length of the argument
    2. The following cells indicate the argument contents.
       Multi-cell arguments are interpreted as bytes
       in big-endian form.
+5. The syscall is made, and its return value is dumped to the current cell.
 
 For example, to call sys-exit, we can give the following code:
 
@@ -83,12 +84,14 @@ Read 5 bytes from stdin into cells 28 to 32 and print them out
   +++ >  Arg count 3
 
 Arg 0~file descriptor  ================================
+
   (0) >  Arg type:    Normal
   +   >  Cell length: 1
   (0) >  Content:     File descriptor 0 for STDIN
 
 Arg 1~write buffer  ===================================
-  ++ >   Arg type:        Cell pointer
+
+  ++ >   Arg type:    Cell pointer
   + >    Cell length: 1
   +++++++
   +++++++
@@ -96,9 +99,10 @@ Arg 1~write buffer  ===================================
   +++++++ >  Content: Target cell 28
 
 Arg 2~read byte count ==================================
-  (0) > Arg type: Normal
+
+  (0) > Arg type:    Normal
   + >   Cell length: 1
-  +++++ Content: read byte count 5
+  +++++ Content:     read byte count 5
 
 Return to cell 0 and execute
   <<<<<<<<<<

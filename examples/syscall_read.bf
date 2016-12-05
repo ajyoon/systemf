@@ -4,12 +4,14 @@ Read 5 bytes from stdin into cells 28 to 32 and print them out
   +++ >  Arg count 3
 
 Arg 0~file descriptor  ================================
+
   (0) >  Arg type:    Normal
   +   >  Cell length: 1
   (0) >  Content:     File descriptor 0 for STDIN
 
 Arg 1~write buffer  ===================================
-  ++ >   Arg type:        Cell pointer
+
+  ++ >   Arg type:    Cell pointer
   + >    Cell length: 1
   +++++++
   +++++++
@@ -17,9 +19,10 @@ Arg 1~write buffer  ===================================
   +++++++ >  Content: Target cell 28
 
 Arg 2~read byte count ==================================
-  (0) > Arg type: Normal
+
+  (0) > Arg type:    Normal
   + >   Cell length: 1
-  +++++ Content: read byte count 5
+  +++++ Content:     read byte count 5
 
 Return to cell 0 and execute
   <<<<<<<<<<

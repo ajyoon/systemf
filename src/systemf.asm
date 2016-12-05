@@ -236,8 +236,8 @@ BF_SYSTEMCALL:
 ;;
 ;; The resulting value is dumped directly into the tape
 ;; from the position of the syscall code.
-;; If the return value is a pointer,
-;; it is dereferenced and dumped to tape.
+;;     TODO: What if the value > 255? There should be an
+;;           action inverse of combineBytes for this!
 ;;
   mov r12, TAPE_POINTER         ; r12 = syscall excursion tape pointer
   inc r12                       ; Move excursion tape pointer to next cell
