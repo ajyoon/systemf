@@ -41,7 +41,6 @@ arg_five_len:   resb 1
 section .includes
   %include "src/combine_bytes.asm"
 
-
 section  .text
 
 global  _start
@@ -230,7 +229,8 @@ BF_SYSTEMCALL:
 ;; The current cell holds the syscall code.
 ;; The second cell holds the number of arguments
 ;; The following cells repeat in blocks of arguments in the form:
-;;   * 1 cell for the type of argument (0 for normal, 1 for pointer)
+;;   * 1 cell for the type of argument
+;;     (0 for normal, 1 for buffer, 2 for cell pointer)
 ;;   * 1 cell for the size (in cells) of the argument.
 ;;   * n cells for the data of the argument.
 ;;
@@ -310,8 +310,12 @@ sysCallExecute:
 ;; Arg 3: Target register
 ;; Arg 4: Byte length of argument data
 prepare_%2:
-  cmp byte [%1], 1              ; Check argument type flag
-  je prepare_%2_as_ptr
+  cmp byte [%1], 0              ; Check argument type flag
+  je prepare_%2_as_val
+  cmp byte [%1], 1
+  je prepare_%2_as_buf
+  cmp byte [%1], 2
+  je prepare_%2_as_cell_ptr
 prepare_%2_as_val:              ; Treat argument as a value
   push rdi
   push rsi
@@ -322,8 +326,20 @@ prepare_%2_as_val:              ; Treat argument as a value
   pop rdi
   mov %3, rax
   jmp continue_%2
-prepare_%2_as_ptr:              ; Treat argument as a pointer
+prepare_%2_as_buf:              ; Treat argument as a buffer
   mov %3, %2
+  jmp continue_%2
+prepare_%2_as_cell_ptr:         ; Treat argument as a cell pointer
+  push rdi
+  push rsi
+  mov rdi, %2
+  movzx rsi, byte [%4]
+  call combineBytes
+  pop rsi
+  pop rdi
+  mov %3, rax
+  add %3, tape
+  jmp continue_%2
 continue_%2:                    ; Continue...
   ;; (Do nothing)
 %endmacro

@@ -1,4 +1,4 @@
-Print to stdout using syscall write: print
+Print to stdout using syscall write
 
 ======================Syscall code=========================
 +            cell 0: 1      Syscall code for write

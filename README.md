@@ -33,17 +33,18 @@ a program, the interpreter does the following:
 
 1. The value at the current cell is considered the syscall code
 2. The following cell is a flag for what type of argument,
-   where 0 indicates a regular argument and 1 indicates a pointer
+   where 0 indicates a regular argument, 1 indicates a buffer,
+   and 2 indicates a cell number pointer.
 2. The following cell is considered the number of arguments
 3. The following cells outline arguments in the following form:
    1. One cell indicates the cell length of the argument
    2. The following cells indicate the argument contents.
       Multi-cell arguments are interpreted as bytes
-      in little-endian form.
+      in big-endian form.
 
 For example, to call sys-exit, we can give the following code:
 
-```
+```bf
 ++++++[>++++++++++<-]>  Write code 60 (sys exit) in cell1
 
 >                       move to cell2
@@ -68,4 +69,54 @@ This will trigger a program exit with exit code 3:
 $ ./bin/systemf examples/syscall_simple.bf
 $ echo $?
 3
+```
+
+We can use cell pointers to tell the kernel to write side effect data
+directly into our program tape. For example, system `read()` takes in
+its second argument a pointer to a buffer. To implement this in systemf
+we can pass a cell pointer instead and flag it as such:
+
+```bf
+Read 5 bytes from stdin into cells 28 to 32 and print them out
+
+  (0) >  Syscall code 0 for read()
+  +++ >  Arg count 3
+
+Arg 0~file descriptor  ================================
+  (0) >  Arg type:    Normal
+  +   >  Cell length: 1
+  (0) >  Content:     File descriptor 0 for STDIN
+
+Arg 1~write buffer  ===================================
+  ++ >   Arg type:        Cell pointer
+  + >    Cell length: 1
+  +++++++
+  +++++++
+  +++++++
+  +++++++ >  Content: Target cell 28
+
+Arg 2~read byte count ==================================
+  (0) > Arg type: Normal
+  + >   Cell length: 1
+  +++++ Content: read byte count 5
+
+Return to cell 0 and execute
+  <<<<<<<<<<
+  %
+
+5 input characters are taken and stored in cells 28 to 32
+Let's prove it:
+
+Go to cell 28
+  >>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Print those contents out!
+  .>.>.>.>.>
+```
+
+And in execution...
+
+```sh
+systemf$ ./bin/systemf examples/syscall_read.bf
+12345
+12345systemf$
 ```
