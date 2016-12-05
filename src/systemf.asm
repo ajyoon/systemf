@@ -2,8 +2,6 @@
 %define TAPE_LENGTH 30000
 %define ARG_LENGTH  256
 
-global  _start
-
 section .data
 boundsErrorMsg:            db "Tape position out of bounds", 10
 boundsErrorMsgLen:         equ $ - boundsErrorMsg
@@ -22,19 +20,31 @@ jump_table:  resb FILE_LENGTH
 ;; Arrays and mode flags for syscall args
 arg_zero:       resb ARG_LENGTH
 arg_zero_mode:  resb 1
+arg_zero_len:   resb 1
 arg_one:        resb ARG_LENGTH
 arg_one_mode:   resb 1
+arg_one_len:    resb 1
 arg_two:        resb ARG_LENGTH
 arg_two_mode:   resb 1
+arg_two_len:    resb 1
 arg_three:      resb ARG_LENGTH
 arg_three_mode: resb 1
+arg_three_len:  resb 1
 arg_four:       resb ARG_LENGTH
 arg_four_mode:  resb 1
+arg_four_len:   resb 1
 arg_five:       resb ARG_LENGTH
 arg_five_mode:  resb 1
+arg_five_len:   resb 1
 
-section  .text                  ; declaring our .text segment
 
+section .includes
+  %include "src/combine_bytes.asm"
+
+
+section  .text
+
+global  _start
 _start:                         ; Entry point
 
 ;; Load file ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -230,7 +240,6 @@ BF_SYSTEMCALL:
 ;; it is dereferenced and dumped to tape.
 ;;
   mov r12, TAPE_POINTER         ; r12 = syscall excursion tape pointer
-  movzx r9, byte [r12]          ; r9 = syscall code
   inc r12                       ; Move excursion tape pointer to next cell
   movzx r11, byte [r12]         ; r11 = number of args
   mov rbx, 0                    ; rbx = current arg number
@@ -251,18 +260,21 @@ sysCallGetArg:
   cmp rbx, 5
   je sysCallGetArgFive
 
-%macro read_arg 2
+%macro read_arg 3
   ;; Read an argument from the tape into buffers
   ;; Arg 1: Address of argument mode target byte
   ;; Arg 2: Address of argument byte buffer
+  ;; Arg 3: Address of argument length buffer
   inc r12                       ; Increment excursion tape pointer to arg type cell
   mov r8b, byte [r12]
   mov byte [%1], r8b            ; Get arg type
   inc r12                       ; Increment excursion tape pointer
   movzx r10, byte [r12]         ; Get the argument length
+  mov byte [%3], r10b           ; Save argument length
 .read_arg_body:                 ; Read r12 tape cells into argument byte buffer
   cmp r10, 0
   je sysCallGetArgCharTail      ; If there are no more cells to read, this arg is fully read.
+
   inc r12                       ; Increment excursion tape pointer to next argument cell
   mov al, byte [r12]            ; use al as temporary holding place for current cell value
   mov byte [%2 + rcx], al       ; Copy current cell to %2 buffer position in argument buffer
@@ -272,17 +284,17 @@ sysCallGetArg:
 %endmacro
 
 sysCallGetArgZero:
-  read_arg arg_zero_mode, arg_zero
+  read_arg arg_zero_mode, arg_zero, arg_zero_len
 sysCallGetArgOne:
-  read_arg arg_one_mode, arg_one
+  read_arg arg_one_mode, arg_one, arg_one_len
 sysCallGetArgTwo:
-  read_arg arg_two_mode, arg_two
+  read_arg arg_two_mode, arg_two, arg_two_len
 sysCallGetArgThree:
-  read_arg arg_three_mode, arg_three
+  read_arg arg_three_mode, arg_three, arg_three_len
 sysCallGetArgFour:
-  read_arg arg_four_mode, arg_four
+  read_arg arg_four_mode, arg_four, arg_four_len
 sysCallGetArgFive:
-  read_arg arg_five_mode, arg_five
+  read_arg arg_five_mode, arg_five, arg_five_len
 
 sysCallGetArgCharTail:
   dec r11                       ; Decrement remaining arguments
@@ -290,32 +302,39 @@ sysCallGetArgCharTail:
   jmp sysCallGetArg
 
 sysCallExecute:
-  mov rax, r9                   ; Get syscall code back
 
-%macro prepare_arg 3
+%macro prepare_arg 4
 ;; Macro to load an argument from a buffer into the a register.
 ;; Arg 1: Address of the byte flag indicating the argument type
 ;; Arg 2: The Address of the argument data
 ;; Arg 3: Target register
+;; Arg 4: Byte length of argument data
 prepare_%2:
   cmp byte [%1], 1              ; Check argument type flag
   je prepare_%2_as_ptr
-prepare_%2_as_val:                  ; Treat argument as a value
-  mov %3, [%2]
+prepare_%2_as_val:              ; Treat argument as a value
+  push rdi
+  push rsi
+  mov rdi, %2
+  movzx rsi, byte [%4]
+  call combineBytes
+  pop rsi
+  pop rdi
+  mov %3, rax
   jmp continue_%2
-prepare_%2_as_ptr:                  ; Treat argument as a pointer
+prepare_%2_as_ptr:              ; Treat argument as a pointer
   mov %3, %2
 continue_%2:                    ; Continue...
   ;; (Do nothing)
 %endmacro
 
-  prepare_arg arg_zero_mode,  arg_zero,  rdi
-  prepare_arg arg_one_mode,   arg_one,   rsi
-  prepare_arg arg_two_mode,   arg_two,   rdx
-  prepare_arg arg_three_mode, arg_three, rcx
-  prepare_arg arg_four_mode,  arg_four,  r8
-  prepare_arg arg_five_mode,  arg_five,  r9
-
+  prepare_arg arg_zero_mode,  arg_zero,  rdi, arg_zero_len
+  prepare_arg arg_one_mode,   arg_one,   rsi, arg_one_len
+  prepare_arg arg_two_mode,   arg_two,   rdx, arg_two_len
+  prepare_arg arg_three_mode, arg_three, rcx, arg_three_len
+  prepare_arg arg_four_mode,  arg_four,  r8,  arg_four_len
+  prepare_arg arg_five_mode,  arg_five,  r9,  arg_five_len
+  movzx rax, byte [TAPE_POINTER]        ; Get syscall code back
   syscall
   ;; Syscall return value is now in rax
   ;; Dump it into the tape from TAPE_POINTER forward
@@ -364,7 +383,3 @@ exitSuccess:
   mov rax, 60
   mov rdi, 0
   syscall
-
-
-;; Includes ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-%include "src/combine_bytes.asm"
