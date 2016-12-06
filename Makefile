@@ -4,7 +4,7 @@ build:
 	&& rm bin/systemf.o
 
 debug:
-	nasm -f elf64 -F dwarf src/systemf.asm -o bin/systemf.o \
+	nasm -f elf64 -F dwarf -g src/systemf.asm -o bin/systemf.o \
 	&& ld bin/systemf.o -o bin/systemf \
 	&& rm bin/systemf.o
 

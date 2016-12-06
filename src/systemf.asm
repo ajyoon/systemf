@@ -14,9 +14,9 @@ file:        resb FILE_LENGTH
 ;; Byte array for the brainfuck tape
 tape:        resb TAPE_LENGTH
 ;; Array for recording jump indexes during parsing
-index_stack: resb FILE_LENGTH
+index_stack: resq FILE_LENGTH
 ;; Array for recording jump indexes for brackets during execution.
-jump_table:  resb FILE_LENGTH
+jump_table:  resq FILE_LENGTH
 ;; Arrays and mode flags for syscall args
 arg_zero:       resb ARG_LENGTH
 arg_zero_mode:  resb 1
@@ -40,6 +40,7 @@ arg_five_len:   resb 1
 
 section .includes
   %include "src/combine_bytes.asm"
+  %include "src/build_jump_table.asm"
 
 section  .text
 
@@ -69,50 +70,9 @@ _start:                         ; Entry point
 
 ;; Parse brackets to build the jump table ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-parseBrackets:
-  %define STACK_POS r10         ; Position of the stack top
-  %define FILE_INDEX r15        ; Position of the interpreter in the program
-  mov STACK_POS, -1             ; Initialize stack position
-  mov FILE_INDEX, 0             ; Initialize file position
-
-parseLoop:
-  cmp byte [file + FILE_INDEX], 5Bh  ; Test if == '['
-  jne checkRightBracket
-parseLeftBracket:
-  ;; Push the character file index onto the index stack
-  inc STACK_POS
-  mov [index_stack + STACK_POS], FILE_INDEX
-  jmp parseLoopTail
-checkRightBracket:
-  cmp byte [file + FILE_INDEX], 5Dh
-  jne checkFileEnd
-parseRightBracket:
-  ;; If the stack position <= -1, the brackets are mismatched
-  cmp STACK_POS, -1
-  jle mismatchBracketsError
-  ;; Pop the left bracket from the stacks and place references from each bracket
-  ;; to each other in the jump_table for use in program execution
-
-  mov r12b, byte [index_stack + STACK_POS] ; Store the '[' file index in r12
-  mov [jump_table + FILE_INDEX], r12b      ; Set jump_table[right_bracket] to left_bracket
-  mov r13, FILE_INDEX
-  inc r13                      ; Store right bracket file index + 1 in r13
-  mov [jump_table + r12], r13b ; Set jump_table[left_bracket] to right_bracket + 1
-  dec STACK_POS                ; Decrement stack pointer
-  jmp parseLoopTail
-checkFileEnd:
-  cmp byte [file + FILE_INDEX], 0
-  je parseLoopTerminate
-parseLoopTail:
-  inc FILE_INDEX
-  jmp parseLoop
-parseLoopTerminate:
-  ;; If the stack position != -1, the brackets are mismatched
-  cmp STACK_POS, -1
-  jne mismatchBracketsError
-  ;; Otherwise all is well. Begin program execution.
-  jmp mainLoopStart
-
+mov rdi, file
+mov rsi, jump_table
+call buildJumpTable
 
 ;; Main loop for script interpretation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -211,15 +171,23 @@ BF_PUT_CHAR:                    ; Print cell char to stdout
 BF_LOOPSTART:                   ; Bracket open, start of loop
   cmp byte [TAPE_POINTER], 0
   jne mainLoopTailIncrementProgramPos
-  movzx r9, byte [jump_table + PROGRAM_POS] ; Set r9 to jump-to location
-  mov PROGRAM_POS, r9
+  mov r9, PROGRAM_POS
+  mov rax, 4
+  mul r9
+  mov r9, rax
+  add r9, jump_table
+  mov PROGRAM_POS, qword [r9]
   jmp mainLoopTailNoChangeProgramPos
 
 BF_LOOPEND:                     ; Bracket close, end of loop
   cmp byte [TAPE_POINTER], 0
   je mainLoopTailIncrementProgramPos
-  movzx r9, byte [jump_table + PROGRAM_POS] ; Set r9 to jump-to location
-  mov PROGRAM_POS, r9
+  mov r9, PROGRAM_POS
+  mov rax, 4
+  mul r9
+  mov r9, rax
+  add r9, jump_table
+  mov PROGRAM_POS, qword [r9]
   jmp mainLoopTailNoChangeProgramPos
 
 BF_SYSTEMCALL:
@@ -355,7 +323,7 @@ continue_%2:                    ; Continue...
   ;; Syscall return value is now in rax
   ;; Dump it into the tape from TAPE_POINTER forward
   ;; (Currently this value is dumped literally, pointers are not dereferenced)
-  mov [TAPE_POINTER], rax
+  mov [TAPE_POINTER], al
   jmp mainLoopTailIncrementProgramPos
 
 ;; Continue the main loop by incrementing the program pointer position
