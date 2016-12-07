@@ -32,13 +32,14 @@ additional language character: `%`. When this character is encountered in
 a program, the interpreter does the following:
 
 1. The value at the current cell is considered the syscall code
-2. The following cell is a flag for what type of argument,
-   where 0 indicates a regular argument, 1 indicates a buffer,
-   and 2 indicates a cell number pointer.
 3. The following cell is considered the number of arguments
 4. The following cells outline arguments in the following form:
-   1. One cell indicates the cell length of the argument
-   2. The following cells indicate the argument contents.
+   1. One cell is a flag for what type of argument this is,
+      where 0 indicates a regular argument,
+      1 indicates a pointer to the argument contents in memory,
+      and 2 indicates a pointer to a given cell number.
+   2. One cell indicates the cell length of the argument
+   3. The following cells indicate the argument contents.
       Multi-cell arguments are interpreted as bytes
       in big-endian form.
 5. The syscall is made, and its return value is dumped to the current cell.
@@ -52,7 +53,7 @@ For example, to call sys-exit, we can give the following code:
 +                       Write argument count of 1 to cell2
 
 >                       move to cell3
-(leave 0)               Write first arg type as normal (non-pointer)
+(leave 0)               Write first arg type as normal
 
 >                       move to cell4
 +                       Write first arg cell length of 1 to cell3
