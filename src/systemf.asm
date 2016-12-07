@@ -5,6 +5,8 @@
 section .data
 boundsErrorMsg:            db "Tape position out of bounds", 10
 boundsErrorMsgLen:         equ $ - boundsErrorMsg
+filePositionErrorMsg:      db "File position out of bounds", 10
+filePositionErrorMsgLen:   equ $ - filePositionErrorMsg
 bracketsSyntaxErrorMsg:    db "Syntax Error: Mismatched brackets", 10
 bracketsSyntaxErrorMsgLen: equ $ - bracketsSyntaxErrorMsg
 
@@ -91,7 +93,7 @@ mainLoopStart:
 mainLoop:
 
   cmp PROGRAM_POS, FILE_LENGTH ; if PROGRAM_POS > file length, exit.
-  jg exitSuccess
+  jg filePositionError
 
   ;; Read symbol at PROGRAM_POS
 
@@ -124,6 +126,9 @@ mainLoop:
 
   cmp byte [file + PROGRAM_POS], 25h  ; %      Syscall
   je BF_SYSTEMCALL
+
+  cmp byte [file + PROGRAM_POS], 24h  ; $      Debugging breakpoint
+  je BF_DEBUGGING_BREAK
 
   ;; Otherwise, ignore this character (whitespace / comment)
   jmp mainLoopTailIncrementProgramPos
@@ -171,9 +176,8 @@ BF_PUT_CHAR:                    ; Print cell char to stdout
 BF_LOOPSTART:                   ; Bracket open, start of loop
   cmp byte [TAPE_POINTER], 0
   jne mainLoopTailIncrementProgramPos
-  mov r9, PROGRAM_POS
-  mov rax, 4
-  mul r9
+  mov rax, 8
+  mul PROGRAM_POS
   mov r9, rax
   add r9, jump_table
   mov PROGRAM_POS, qword [r9]
@@ -182,13 +186,16 @@ BF_LOOPSTART:                   ; Bracket open, start of loop
 BF_LOOPEND:                     ; Bracket close, end of loop
   cmp byte [TAPE_POINTER], 0
   je mainLoopTailIncrementProgramPos
-  mov r9, PROGRAM_POS
-  mov rax, 4
-  mul r9
+  mov rax, 8
+  mul PROGRAM_POS
   mov r9, rax
   add r9, jump_table
   mov PROGRAM_POS, qword [r9]
   jmp mainLoopTailNoChangeProgramPos
+
+BF_DEBUGGING_BREAK:
+  nop
+  jmp mainLoopTailIncrementProgramPos
 
 BF_SYSTEMCALL:
 ;;
@@ -345,6 +352,18 @@ boundsError:
   mov rdi, 0
   mov rsi, boundsErrorMsg
   mov rdx, boundsErrorMsgLen
+  syscall
+  ;; Exit
+  mov rax, 60
+  mov rdi, 2
+  syscall
+
+filePositionError:
+  ;; Print error message
+  mov rax, 1
+  mov rdi, 0
+  mov rsi, filePositionErrorMsg
+  mov rdx, filePositionErrorMsgLen
   syscall
   ;; Exit
   mov rax, 60

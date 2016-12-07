@@ -33,24 +33,28 @@ buildJumpTable:
   jmp .parseLoopTail
 
 .processLeftBracket:
-  push FILE_POS
+  push r8 ;FILE_POS
   jmp .parseLoopTail
 
 .processRightBracket:
   ; Get file index of last left bracket
   pop r13
   ; Point jump_table[right_bracket_pos] to left_bracket_pos
-  mov rax, 4
+  mov rax, 8
   mul FILE_POS
   mov TMP_ADDR, rax
   add TMP_ADDR, JUMP_TABLE
-  mov qword [TMP_ADDR], r13
-  ; Point jump_table[right_bracket_pos] to left_bracket_pos
-  mov rax, 4
+  mov [TMP_ADDR], r13
+  ; Point jump_table[left_bracket_pos] to right_bracket_pos
+  mov rax, 8
   mul r13
   mov TMP_ADDR, rax
   add TMP_ADDR, JUMP_TABLE
-  mov qword [TMP_ADDR], FILE_POS
+  ; Point left bracket to just past right bracket by incrementing FILE_POS
+  inc FILE_POS
+  mov [TMP_ADDR], FILE_POS
+  ; Reset FILE_POS
+  dec FILE_POS
   jmp .parseLoopTail
 
 .parseLoopTail:
