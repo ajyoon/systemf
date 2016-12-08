@@ -1,4 +1,4 @@
-%define FILE_LENGTH 131072
+%define FILE_LENGTH 100000
 %define TAPE_LENGTH 30000
 %define ARG_LENGTH  256
 
@@ -86,13 +86,13 @@ call buildJumpTable
 mainLoopStart:
 ;; Set up main loop
 
-  mov PROGRAM_POS, 0         ; Initialize the interpreter position
+  mov PROGRAM_POS, 0            ; Initialize the interpreter position
   mov TAPE_POINTER, tape        ; Initialize the tape pointer to pos 0
 
 
 mainLoop:
 
-  cmp PROGRAM_POS, FILE_LENGTH ; if PROGRAM_POS > file length, exit.
+  cmp PROGRAM_POS, FILE_LENGTH  ; if PROGRAM_POS > file length, exit.
   jg filePositionError
 
   ;; Read symbol at PROGRAM_POS
@@ -211,8 +211,6 @@ BF_SYSTEMCALL:
 ;;
 ;; The resulting value is dumped directly into the tape
 ;; from the position of the syscall code.
-;;     TODO: What if the value > 255? There should be an
-;;           action inverse of combineBytes for this!
 ;;
   mov r12, TAPE_POINTER         ; r12 = syscall excursion tape pointer
   inc r12                       ; Move excursion tape pointer to next cell
@@ -220,9 +218,9 @@ BF_SYSTEMCALL:
   mov rbx, 0                    ; rbx = current arg number
 sysCallGetArg:
   cmp r11, 0
-  jle sysCallExecute         ; End loop once args are exhausted
-  mov rcx, 0                 ; Set rcx = 0 to track buffer copy offset
-  cmp rbx, 0                 ; Branch to current argument ...
+  jle sysCallExecute            ; End loop once args are exhausted
+  mov rcx, 0                    ; Set rcx = 0 to track buffer copy offset
+  cmp rbx, 0                    ; Branch to current argument ...
   je sysCallGetArgZero
   cmp rbx, 1
   je sysCallGetArgOne
@@ -322,14 +320,13 @@ continue_%2:                    ; Continue...
   prepare_arg arg_zero_mode,  arg_zero,  rdi, arg_zero_len
   prepare_arg arg_one_mode,   arg_one,   rsi, arg_one_len
   prepare_arg arg_two_mode,   arg_two,   rdx, arg_two_len
-  prepare_arg arg_three_mode, arg_three, rcx, arg_three_len
+  prepare_arg arg_three_mode, arg_three, r10, arg_three_len
   prepare_arg arg_four_mode,  arg_four,  r8,  arg_four_len
   prepare_arg arg_five_mode,  arg_five,  r9,  arg_five_len
   movzx rax, byte [TAPE_POINTER]        ; Get syscall code back
   syscall
   ;; Syscall return value is now in rax
   ;; Dump it into the tape from TAPE_POINTER forward
-  ;; (Currently this value is dumped literally, pointers are not dereferenced)
   mov [TAPE_POINTER], al
   jmp mainLoopTailIncrementProgramPos
 
