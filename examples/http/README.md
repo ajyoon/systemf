@@ -1,10 +1,12 @@
 # a (slightly) functional HTTP server implemented in systemf
 
-This is a slightly functional HTTP server implemented in
-[systemf](https://github.com/ajyoon/systemf), an extension of
-the esoteric [brainfuck](https://esolangs.org/wiki/brainfuck)
-programming language which provides program access to Linux syscalls via
-an additional language character `%`.
+brainfuck is awesome, but per spec it's only able to interact with the real world via
+STDIN and STDOUT.
+
+By extending the language with a special character `%` which executes a syscall, we can
+do a whole lot more with it while having all the "fun" of working in the language.
+This lets us do lots of cool things like
+write an HTTP server in brainfuck:
 
 ![served webpage screenshot](screenshots/index_preview.png?raw=true "index.html")
 

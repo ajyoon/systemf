@@ -4,6 +4,14 @@
 
 <a href='https://www.recurse.com' title='Made with love at the Recurse Center'><img src='https://cloud.githubusercontent.com/assets/2883345/11325206/336ea5f4-9150-11e5-9e90-d86ad31993d8.png' height='20px'/></a>
 
+brainfuck is awesome, but per spec it's only able to interact with the real world via
+STDIN and STDOUT.
+
+By extending the language with a special character `%` which executes a syscall, we can
+do a whole lot more with it while having all the "fun" of working in the language.
+This lets us do lots of cool things like
+[write an HTTP server in brainfuck:](examples/http)
+
 ![served webpage screenshot](examples/http/screenshots/index_preview.png?raw=true "index.html")
 
 Building:
@@ -32,11 +40,6 @@ This interpreter features a full implementation of the [brainfuck](https://esola
 * Mismatched brackets will cause a crash with exit code `1`
 
 ## Syscalls
-
-Typical brainfuck programs are only able to interact with the real world via
-STDIN and STDOUT. This implementation extends the language by allowing it to
-make Linux syscalls, letting it do lots of cool things like
-[write an HTTP server in brainfuck](examples/http).
 
 To make a syscall in brainfuck programs, this implementation introduces an
 additional language character: `%`. When this character is encountered in
