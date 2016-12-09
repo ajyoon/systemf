@@ -16,16 +16,26 @@ any way to properly create C `struct`s, we have to do things like manually
 build up structs byte-by-byte, passing the series of brainfuck cells in
 memory directly to the kernel.
 
+Building the interpreter:
+
+The interpreter is written in NASM x86-64 assembly. You'll need NASM to build, and if your architecture is not x86-64 you will need to use an emulator or similar solution. Otherwise, it's as easy as:
+
+```sh
+http$ cd ../../
+systemf$ make [build || debug || clean]
+```
+
 To run:
 
 ```sh
-# Build if you haven't already
-systemf$ make debug
-systemf$ cd examples/http
-systemf/examples/http$ ../../bin/systemf server.bf
+systemf$ cd examples/http/
+http$ ../../bin/systemf server.bf
 ```
 
 The server will listen on `localhost:4000`.
 Go to `localhost:4000/index.html` to see the site in action!
 
 It's, uh, pretty insecure. Don't try this in the wild.
+
+For more details about the interpreter and its rules, check out
+the [main project readme](https://github.com/ajyoon/systemf).

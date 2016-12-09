@@ -31,6 +31,11 @@ This interpreter features a full implementation of the [brainfuck](https://esola
 
 ## Syscalls
 
+Typical brainfuck programs are only able to interact with the real world via
+STDIN and STDOUT. This implementation extends the language by allowing it to
+make Linux syscalls, letting it do lots of cool things like
+[write an HTTP server in brainfuck](examples/http).
+
 To make a syscall in brainfuck programs, this implementation introduces an
 additional language character: `%`. When this character is encountered in
 a program, the interpreter does the following:
@@ -47,9 +52,6 @@ a program, the interpreter does the following:
       Multi-cell arguments are interpreted as bytes
       in big-endian form.
 5. The syscall is made, and its return value is dumped to the current cell.
-
-Having the ability to interact with the outside world in ways other than STDIN/STDOUT
-lets us do a lot of cool things, like [write HTTP servers in brainfuck](examples/http)
 
 For example, to call sys-exit, we can give the following code:
 
