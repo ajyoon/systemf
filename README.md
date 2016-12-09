@@ -44,6 +44,9 @@ a program, the interpreter does the following:
       in big-endian form.
 5. The syscall is made, and its return value is dumped to the current cell.
 
+Having the ability to interact with the outside world in ways other than STDIN/STDOUT
+lets us do a lot of cool things, like [write HTTP servers in brainfuck](examples/http)
+
 For example, to call sys-exit, we can give the following code:
 
 ```bf

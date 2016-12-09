@@ -127,7 +127,7 @@ mainLoop:
   cmp byte [file + PROGRAM_POS], 25h  ; %      Syscall
   je BF_SYSTEMCALL
 
-  cmp byte [file + PROGRAM_POS], 24h  ; $      Debugging breakpoint
+  cmp byte [file + PROGRAM_POS], 24h  ; $      No-op for debugging breakpoints
   je BF_DEBUGGING_BREAK
 
   ;; Otherwise, ignore this character (whitespace / comment)
@@ -193,7 +193,7 @@ BF_LOOPEND:                     ; Bracket close, end of loop
   mov PROGRAM_POS, qword [r9]
   jmp mainLoopTailNoChangeProgramPos
 
-BF_DEBUGGING_BREAK:
+BF_DEBUGGING_BREAK:             ; No-op for debugging breakpoints
   nop
   jmp mainLoopTailIncrementProgramPos
 
@@ -205,7 +205,8 @@ BF_SYSTEMCALL:
 ;; The second cell holds the number of arguments
 ;; The following cells repeat in blocks of arguments in the form:
 ;;   * 1 cell for the type of argument
-;;     (0 for normal, 1 for buffer, 2 for cell pointer)
+;;     (0 for normal, 1 for argument contents pointer,
+;;      2 for cell pointer)
 ;;   * 1 cell for the size (in cells) of the argument.
 ;;   * n cells for the data of the argument.
 ;;
