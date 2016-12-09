@@ -99,7 +99,7 @@ At the end of the program the memory should be restored to *exactly* the way
   it is at this point in execution and the program should loop infinitely back
   to this point
 
-  Temporarilyset cell 10 to 1 to enter loop
+  Temporarily set cell 10 to 1 to enter loop
   +
   Enter loop
 [
@@ -112,7 +112,7 @@ Move to address 36
   ++++++++++++++++++++++++++++++++++++++++++++++++++ > Code 50 = listen()
   ++ > Arg count: 2
 
-  Arg 0: int sockfd:
+  Arg 1: int sockfd:
   (0) > Arg type:     Normal
   +   > Arg cell len: 1
   Move socket file descriptor for cell 14 to cell 40
@@ -120,7 +120,7 @@ Move to address 36
 [->>>>>>>>>>>>>>>>>>>>>>>>>>+<<<<<<<<<<<<<<<<<<<<<<<<<<]
   >>>>>>>>>>>>>>>>>>>>>>>>>> >
 
-  Arg 1: int backlog:
+  Arg 2: int backlog:
   (0) > Arg type: Normal
   +   > Arg cell len: 1
   +++++++++ Arg contents: value 10
