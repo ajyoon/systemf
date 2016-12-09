@@ -2,10 +2,14 @@
 
 ## a brainfuck interpreter supporting Linux syscalls
 
+<a href='https://www.recurse.com' title='Made with love at the Recurse Center'><img src='https://cloud.githubusercontent.com/assets/2883345/11325206/336ea5f4-9150-11e5-9e90-d86ad31993d8.png' height='20px'/></a>
+
 Building:
 
+The interpreter is written in NASM x86-64 assembly. You'll need NASM to build, and if your architecture is not x86-64 you will need to use an emulator or similar solution. Otherwise, it's as easy as:
+
 ```sh
-make
+make [build || debug || clean]
 ```
 
 To run, call the binary on a brainfuck file:
@@ -128,3 +132,64 @@ systemf$ ./bin/systemf examples/syscall_read.bf
 12345
 12345systemf$
 ```
+
+## Other goodies
+
+While the interpreter does not come with built-in debugging abilities,
+running the interpreter from GDB makes debugging quite manageable.
+
+The interpreter offers a special pseudo-instruction `$` which does nothing
+except run a no-op on a label that makes it easy to attach a GDB breakpoint
+at specific locations in your program.
+
+Say you have the following brainfuck program and you want to know
+exactly where you are landing after the `[<]` loop:
+
+```bf
++ > + > + >
+++++++++++
+++++++++++
+++++++++++
+++++++++++
+++++++++++
+++++++++++
+++++++++++ >
+
+(0) > + > + > + > +
+
+[<]
+
+<
+
+.
+```
+
+By placing a `$` symbol after the `[<]` line and attaching a GDB breakpoint
+to `BF_DEBUGGING_BREAK`, we can thoroughly examine the program state at
+that moment:
+
+```
+systemf$ gdb ./bin/systemf
+...
+Reading symbols from ./bin/systemf...done.
+(gdb) break BF_DEBUGGING_BREAK
+Breakpoint 1 at 0x4002ef: file src/systemf.asm, line 197.
+(gdb) run examples/breakpoint_helper.bf
+Starting program: ~/systemf/bin/systemf examples/breakpoint_helper.bf
+
+Breakpoint 1, BF_DEBUGGING_BREAK () at src/systemf.asm:197
+197       nop
+(gdb) info reg r15              #  <-- The interpreter position in the source file (by char)
+r15            0xb3     179
+(gdb) info reg r13              #  <-- A pointer to the current cell in the program
+r13            0x619700 6395648
+(gdb) x/32ub &tape              #  <-- View program tape state (be sure to view in "ub" mode)
+0x6196fc <tape>:        1       1       1       70      0       1       1       1
+0x619704:       1       0       0       0       0       0       0       0
+0x61970c:       0       0       0       0       0       0       0       0
+0x619714:       0       0       0       0       0       0       0       0
+```
+
+In debugging syscalls it is often useful to view the register states immediately before
+calling. To do this simply drop a breakpoint toward the end of the `sysCallExecute` label
+and examine the register state in GDB with `info registers`
