@@ -1,13 +1,12 @@
 # a (slightly) functional HTTP server implemented in systemf
 
-To run:
-
-
 This is a slightly functional HTTP server implemented in
 [systemf](https://github.com/ajyoon/systemf), an extension of
 the esoteric [brainfuck](https://esolangs.org/wiki/brainfuck)
 programming language which provides program access to Linux syscalls via
 an additional language character `%`.
+
+![served webpage screenshot](/screenshots/index_preview.png?raw=true "index.html")
 
 The server can handle `GET` requests for files relative to the server's
 working directory. It does this through basic low-level socket operations
@@ -16,7 +15,7 @@ any way to properly create C `struct`s, we have to do things like manually
 build up structs byte-by-byte, passing the series of brainfuck cells in
 memory directly to the kernel.
 
-Building the interpreter:
+## Building the interpreter:
 
 The interpreter is written in NASM x86-64 assembly. You'll need NASM to build, and if your architecture is not x86-64 you will need to use an emulator or similar solution. Otherwise, it's as easy as:
 
@@ -25,7 +24,7 @@ http$ cd ../../
 systemf$ make [build || debug || clean]
 ```
 
-To run:
+## Serving
 
 ```sh
 systemf$ cd examples/http/
