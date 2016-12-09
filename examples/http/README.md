@@ -6,7 +6,7 @@ the esoteric [brainfuck](https://esolangs.org/wiki/brainfuck)
 programming language which provides program access to Linux syscalls via
 an additional language character `%`.
 
-![served webpage screenshot](/screenshots/index_preview.png?raw=true "index.html")
+![served webpage screenshot](screenshots/index_preview.png?raw=true "index.html")
 
 The server can handle `GET` requests for files relative to the server's
 working directory. It does this through basic low-level socket operations
