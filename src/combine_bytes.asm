@@ -1,3 +1,5 @@
+section .text
+
 combineBytes:
 ;; A function that takes a series of bytes and joins them together as
 ;; a big-endian integer.

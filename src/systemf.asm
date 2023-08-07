@@ -40,9 +40,8 @@ arg_five_mode:  resb 1
 arg_five_len:   resb 1
 
 
-section .includes
-  %include "src/combine_bytes.asm"
-  %include "src/build_jump_table.asm"
+%include "src/combine_bytes.asm"
+%include "src/build_jump_table.asm"
 
 section  .text
 
