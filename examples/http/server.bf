@@ -556,6 +556,35 @@ close() =======================================================================
   Call close()
   %
 
+close() =======================================================================
+
+  Move to cell 51
+  >>>
+
+  Close the opened file
+
+  The current cell is 49
+  The source file descriptor is in cell 53
+
+  Zero all cells 49 to 52
+  [-]>[-]>[-]>[-]<<<
+
+  +++ >  close():   3
+  +   >  Arg count: 1
+
+  Arg 1: int fd
+  (0) > Arg type: 0
+  +     Arg len:  1
+  (Arg value is already filled in)
+  <<<
+
+  Call close()
+  %
+
+  Move back to cell 48
+  <<<
+
+
 Clean up and prepare to loop back to listen() =================================
 
   >>>>>>>>>>>>>>>>>>[>]>>[-]<<<[[-]<]
